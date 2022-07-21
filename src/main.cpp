@@ -54,6 +54,9 @@ void setup() {
   Serial.begin(115200);
   initSPIFFS();
   initWiFi();
+
+
+  WiFi.scanNetworks(true);
   server.addHandler(new SPIFFSEditor(SPIFFS, http_username,http_password));
   server.on("/heap", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(200, "text/plain", String(ESP.getFreeHeap()));
@@ -67,11 +70,9 @@ void setup() {
       for (int i = 0; i < n; ++i) {
         if (i) json += ",";
         json += "{";
-        json += "\"rssi\":" + String(WiFi.RSSI(i));
-        json += ",\"ssid\":\"" + WiFi.SSID(i) + "\"";
-        json += ",\"bssid\":\"" + WiFi.BSSIDstr(i) + "\"";
+        json += "\"ssid\":" + WiFi.SSID(i);
+        json += ",\"rssi\":\"" + String(WiFi.RSSI(i)) + "\"";
         json += ",\"channel\":" + String(WiFi.channel(i));
-        json += ",\"secure\":" + String(WiFi.encryptionType(i));
         json += "}";
       }
       WiFi.scanDelete();

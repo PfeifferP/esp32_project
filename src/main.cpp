@@ -2,8 +2,9 @@
 #include <WiFi.h>
 #include <ESPAsyncWebServer.h>
 #include <AsyncTCP.h>
-#include <SPIFFSEditor.h>
-#include "SPIFFS.h"
+#include <Filemanager.h>
+#include <FS.h>
+#include <LittleFS.h>
 
 //Variables to save values from HTML form
 String ssid = "LTest";
@@ -20,11 +21,24 @@ AsyncWebServer server(80);
 
 
 // Initialize SPIFFS
-void initSPIFFS() {
-  if (!SPIFFS.begin(true)) {
-    Serial.println("An error has occurred while mounting SPIFFS");
+void initFS() {
+  if (!LittleFS.begin(false,"")) {
+    Serial.println("LITTLEFS Mount fehlgeschlagen");
+    Serial.println("Kein Dateisystemsystem gefunden; wird formatiert");
+    // falls es nicht klappt, erneut mit Neu-Formatierung versuchen
+    if (!LittleFS.begin(true,"")) {
+      Serial.println("LITTLEFS Mount fehlgeschlagen");
+      Serial.println("Formatierung nicht möglich");
+      return;
+    } else {
+      Serial.println("Formatierung des Dateisystems erfolgt");
+    }
   }
-  Serial.println("SPIFFS mounted successfully");
+ 
+  Serial.println("Informationen zum Dateisystem:");
+  Serial.printf("- Bytes total:   %ld\n", LittleFS.totalBytes());
+  Serial.printf("- Bytes genutzt: %ld\n\n", LittleFS.usedBytes());
+ 
 }
 
 // Initialize WiFi
@@ -52,12 +66,12 @@ bool initWiFi() {
 void setup() {
   // Serial port for debugging purposes
   Serial.begin(115200);
-  initSPIFFS();
+  initFS();
   initWiFi();
 
 
   WiFi.scanNetworks(true);
-  server.addHandler(new SPIFFSEditor(SPIFFS, http_username,http_password));
+  server.addHandler(new Filemanager(LittleFS, http_username,http_password));
   server.on("/heap", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(200, "text/plain", String(ESP.getFreeHeap()));
   });
@@ -84,7 +98,7 @@ void setup() {
     request->send(200, "application/json", json);
     json = String();
   });
-  server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.html");
+  server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
   server.begin();
 }
 

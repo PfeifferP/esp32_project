@@ -1,5 +1,6 @@
 #include "Filemanager.h"
 #include <FS.h>
+#include <LittleFS.h>
 
 //File: edit.htm.gz, Size: 4151
 #define edit_htm_gz_len 4151
@@ -325,12 +326,10 @@ static void loadExcludeList(fs::FS &_fs, const char *filename){
         //addExclude("/*.js.gz");
         return;
     }
-#ifdef ESP32
     if(excludeFile.isDirectory()){
       excludeFile.close();
       return;
     }
-#endif
     if (excludeFile.size() > 0){
       uint8_t idx;
       bool isOverflowed = false;
@@ -376,11 +375,8 @@ static bool isExcluded(fs::FS &_fs, const char *filename) {
 
 // WEB HANDLER IMPLEMENTATION
 
-#ifdef ESP32
 Filemanager::Filemanager(const fs::FS& fs, const String& username, const String& password)
-#else
-Filemanager::Filemanager(const String& username, const String& password, const fs::FS& fs)
-#endif
+
 :_fs(fs)
 ,_username(username)
 ,_password(password)
@@ -398,24 +394,20 @@ bool Filemanager::canHandle(AsyncWebServerRequest *request){
         if(!request->_tempFile){
           return false;
         }
-#ifdef ESP32
         if(request->_tempFile.isDirectory()){
           request->_tempFile.close();
           return false;
         }
-#endif
       }
       if(request->hasParam("download")){
         request->_tempFile = _fs.open(request->arg("download"), "r");
         if(!request->_tempFile){
           return false;
         }
-#ifdef ESP32
         if(request->_tempFile.isDirectory()){
           request->_tempFile.close();
           return false;
         }
-#endif
       }
       request->addInterestingHeader("If-Modified-Since");
       return true;
@@ -439,24 +431,13 @@ void Filemanager::handleRequest(AsyncWebServerRequest *request){
   if(request->method() == HTTP_GET){
     if(request->hasParam("list")){
       String path = request->getParam("list")->value();
-#ifdef ESP32
       File dir = _fs.open(path);
-#else
-      Dir dir = _fs.openDir(path);
-#endif
       path = String();
       String output = "[";
-#ifdef ESP32
       File entry = dir.openNextFile();
       while(entry){
-#else
-      while(dir.next()){
-        fs::File entry = dir.openFile("r");
-#endif
-        if (isExcluded(_fs, entry.name())) {
-#ifdef ESP32
+      if (isExcluded(_fs, entry.name())) {
             entry = dir.openNextFile();
-#endif
             continue;
         }
         if (output != "[") output += ',';
@@ -467,15 +448,9 @@ void Filemanager::handleRequest(AsyncWebServerRequest *request){
         output += "\",\"size\":";
         output += String(entry.size());
         output += "}";
-#ifdef ESP32
         entry = dir.openNextFile();
-#else
-        entry.close();
-#endif
       }
-#ifdef ESP32
       dir.close();
-#endif
       output += "]";
       request->send(200, "application/json", output);
       output = String();
@@ -488,8 +463,7 @@ void Filemanager::handleRequest(AsyncWebServerRequest *request){
       if (request->header("If-Modified-Since").equals(buildTime)) {
         request->send(304);
       } else {
-        AsyncWebServerResponse *response = request->beginResponse_P(200, "text/html", edit_htm_gz, edit_htm_gz_len);
-        response->addHeader("Content-Encoding", "gzip");
+        AsyncWebServerResponse *response = request->beginResponse(LittleFS, "/edit.htm");
         response->addHeader("Last-Modified", buildTime);
         request->send(response);
       }

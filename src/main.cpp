@@ -2,9 +2,10 @@
 #include <WiFi.h>
 #include <ESPAsyncWebServer.h>
 #include <AsyncTCP.h>
-#include <Filemanager.h>
+
 #include <FS.h>
 #include <LittleFS.h>
+#include <Filemanager.h>
 
 //Variables to save values from HTML form
 String ssid = "LTest";
@@ -34,11 +35,6 @@ void initFS() {
       Serial.println("Formatierung des Dateisystems erfolgt");
     }
   }
- 
-  Serial.println("Informationen zum Dateisystem:");
-  Serial.printf("- Bytes total:   %ld\n", LittleFS.totalBytes());
-  Serial.printf("- Bytes genutzt: %ld\n\n", LittleFS.usedBytes());
- 
 }
 
 // Initialize WiFi
